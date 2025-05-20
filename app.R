@@ -48,9 +48,15 @@ server <- function(input, output, session) {
         # Wait a bit for the page to render completely
         Sys.sleep(1)
         
-        # Take the screenshot
-        img_data <- tab$Page$captureScreenshot()
-        screenshot_data(img_data)
+        # Take the screenshot - the result is a list with a data element containing base64 data
+        screenshot_result <- tab$Page$captureScreenshot()
+        
+        # Extract just the base64 data from the result
+        if (is.list(screenshot_result) && !is.null(screenshot_result$data)) {
+          screenshot_data(screenshot_result$data)
+        } else {
+          showNotification("Failed to get screenshot data", type = "error")
+        }
         
         # Close the tab
         tab$close()
@@ -65,14 +71,16 @@ server <- function(input, output, session) {
   
   # Render the screenshot
   output$screenshot_ui <- renderUI({
-    if (is.null(screenshot_data())) {
+    screenshot <- screenshot_data()
+    
+    if (is.null(screenshot)) {
       return(div(
         class = "text-center p-5",
         p("No screenshot captured yet. Enter a URL and click the 'Capture Screenshot' button.")
       ))
     } else {
-      # Convert the binary data to a data URI
-      img_src <- sprintf("data:image/png;base64,%s", screenshot_data())
+      # The data is already base64-encoded, so we can use it directly
+      img_src <- sprintf("data:image/png;base64,%s", screenshot)
       
       # Return the image tag
       return(img(
