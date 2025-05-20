@@ -19,8 +19,9 @@ ui <- page_sidebar(
 )
 
 server <- function(input, output, session) {
-  # Initialize Chrome when the app starts
-  chrome <- reactiveVal(Chrome$new())
+  # Initialize Chrome when the app starts - store the actual Chrome instance
+  # directly rather than in a reactive value to avoid reactive context issues
+  chrome_instance <- Chrome$new()
   
   # Create a reactive for the screenshot data
   screenshot_data <- reactiveVal(NULL)
@@ -31,7 +32,7 @@ server <- function(input, output, session) {
     withProgress(message = "Capturing screenshot...", {
       tryCatch({
         # Get a new tab
-        tab <- chrome()$new_session()
+        tab <- chrome_instance$new_session()
         
         # Navigate to the URL
         tab$Page$navigate(input$url)
@@ -90,9 +91,11 @@ server <- function(input, output, session) {
     }
   })
   
-  # Clean up when the session ends
-  onSessionEnded(function() {
-    chrome()$close()
+  # Clean up when the session ends - use the direct chrome_instance variable
+  session$onSessionEnded(function() {
+    if (!is.null(chrome_instance)) {
+      try(chrome_instance$close(), silent = TRUE)
+    }
   })
 }
 
